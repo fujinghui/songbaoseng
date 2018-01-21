@@ -24,7 +24,7 @@ SECRET_KEY = 't$xmg6v0h&-jb(z5sk9d4^+=t**(a&*qg1&&8wuiwqzufegl)8'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+#DEBUG = False
 ALLOWED_HOSTS = []
 
 
@@ -37,6 +37,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+	
 )
 
 MIDDLEWARE_CLASSES = (
@@ -63,7 +64,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-            ],
+				'django.template.context_processors.static',
+			],
         },
     },
 ]
@@ -95,8 +97,14 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+
+#SITE_ROOT=os.path.join(os.path.abspath(os.path.dirname(__file__)),'..')
+#STATIC_ROOT = os.path.join(SITE_ROOT,'static')
+
+STATICFILES_DIRS = [
+	os.path.join(BASE_DIR, "static"),
+];

@@ -1,0 +1,39 @@
+<!DOCTYPE >
+<html>
+	<head>
+		<title>在线聊天工具</title>
+		<meta charset="utf-8">
+	</head>
+	<body>
+		<input type="button" value="发送数据" onclick="sendMessage()"><br />
+		<input type="button" value="关闭socket" onclick="close()"><br />
+		<script>
+			function sendMessage(){
+				ws.send("hello");
+			}
+			function close(){
+				ws.close();
+			}
+			var ws = new WebSocket("ws://127.0.0.1:11111");
+			ws.onopen = function(){
+				for(var i = 0; i < 10; i ++)
+				{
+					//ws.send("hello world!");
+				}
+				console.log("发送数据！");
+				//ws.close();
+			};
+			ws.onmessage = function(evt){
+				var message = evt.data;
+				//alert("接收导数据：" + message);
+				console.log("接收到数据：" + message);
+			}
+			ws.onclose = function(){
+				//alert("关闭websocket");
+				console.log("关闭websokcet");
+			}
+
+
+		</script>
+	</body>
+</html>

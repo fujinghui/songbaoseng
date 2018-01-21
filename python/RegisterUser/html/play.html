@@ -1,0 +1,315 @@
+<!DOCTYPE>
+<html>
+	<head>
+		<title>my audio</title>
+		<style type="text/css">
+			.main{
+				display:flex;
+				width:100%;
+				height:200px;
+			}
+			.main div{
+				flex:1;
+			}
+		</style>
+		<script>
+			var context;
+			var sound;
+			var processor, analyser;
+			var data;
+
+			try{
+				context = new (window.AudioContext||window.webAudioContext||window.webkitAudioContext)();
+				processor = context.createScriptProcessor(1024);
+				analyser = context.createAnalyser();		//analyser node
+				processor.connect(context.destination);
+				analyser.connect(processor);
+				data = new Uint8Array(analyser.frequencyBinCount);
+
+			}catch(e){
+				throw new Error("the brower not support!");
+			}
+			// var xhr = new XMLHttpRequest();
+			// xhr.open("GET", "mp3/qhy.mp3", true);
+			// xhr.responseType = 'arraybuffer';
+			// xhr.onload = function(){
+			// 	sound = context.createBufferSource();
+			// 	context.decodeAudioData(xhr.response, function(buffer){
+			// 			sound.buffer = buffer;
+			// 			sound.connect(context.destination);
+			// 			console.log("load success");
+			// 	});
+			// }
+			// xhr.send();
+
+
+			function loadAudioElement(url){
+				return new Promise(function(resolv, reject){
+					var audio = new Audio();
+					audio.addEventListener('canplay', function(){
+						resolv(audio);
+					});
+					audio.addEventListener('error', function(){
+						reject("load faild!")
+					});
+					audio.src = url;
+				});
+			}
+			{% load staticfiles %}
+			loadAudioElement("{% static 'media/thz.mp3' %}").then(function(elem){
+				//elem.play();
+				Sound.element = elem;
+				Sound.canvas = document.getElementById("mycanvas");
+				Sound.context = Sound.canvas.getContext("2d");
+				Sound.play();
+			},						//success
+			function(ele){
+				console.log(ele);
+			});						//faild
+			var Sound = {
+				getColorRandom : function(){
+					var r = Math.floor(Math.random() * 256);
+					var g = Math.floor(Math.random() * 256);
+					var b = Math.floor(Math.random() * 256);
+					return "rgb("+parseInt(r, 16)+","+parseInt(g, 16)+","+parseInt(b, 16)+")";
+				},
+				getColor : function(r, g, b){
+					var rr,gg,bb;
+					rr = r; gg = g; bb = b;
+					if(r == -1 || r == null || typeof(r) == "undefined")
+						rr = Math.floor(Math.random() * 256);
+					if(g == -1 || g == null || typeof(g) == "undefined")
+						gg = Math.floor(Math.random() * 256);
+					if(b == -1 || b == null || typeof(b) == "undefined")
+						bb = Math.floor(Math.random() * 256);
+					rr = parseInt(rr); gg = parseInt(gg); bb = parseInt(bb);
+					rr %= 256; gg %= 256; bb %= 256;
+					return "rgb("+rr+","+gg+","+bb+")";
+				},
+				canvas : undefined,
+				context : undefined,
+				center_x : 256,
+				center_y : 256,
+
+				element : undefined,
+				play : function(){
+					var sound = context.createMediaElementSource(this.element);
+					//play completion
+					this.element.onended = function(){
+						sound.disconnect();
+						sound = null;
+						processor.onaudioprocess = function(){};
+					}
+					sound.connect(analyser);
+					sound.connect(context.destination);
+					processor.onaudioprocess = function(){
+						analyser.getByteTimeDomainData(data);
+						var div = document.getElementById("graph");
+						if(typeof(div) != "undefined")
+						{
+							var divs = div.getElementsByTagName("div");
+							if(typeof(divs) != "undefined")
+							{
+								var count = Math.floor(data.length / divs.length);
+								var preHeight = 128;					//pre height
+								var show_points = divs.length;			//show point count
+								var angle = 0 * 2 * Math.PI /show_points;
+								var start_point = {};
+								Sound.context.clearRect(0, 0, Sound.canvas.width, Sound.canvas.height);
+
+								Sound.context.fillStyle = "rgb(255, 255, 255)";
+								Sound.context.fillRect(0, 0, Sound.canvas.width, Sound.canvas.height);
+								Sound.context.strokeStyle = Sound.getColor();//"rgb(155, 200, 155)";
+								Sound.context.beginPath();
+								Sound.context.lineWidth = 5;
+								for(var i = 0; i < divs.length; i ++)
+								{
+									var frequency = 0;
+									for(var f = count * i; f < count * i + count; f ++)
+									{
+										frequency += data[f];
+									}
+									frequency /= count; 			//average frequency
+									frequency = Math.floor(frequency);
+									divs[i].style.height = frequency + "px";
+									divs[i].style.background = Sound.getColor
+									(
+										i*10+frequency,
+										100-i*10+frequency, 
+										i*frequency
+									);
+									//cavnas draw frequency
+									angle = i * 2 * Math.PI / show_points;
+									//console.log(angle);
+									if(i == 0)
+									{
+										Sound.context.moveTo(
+											Sound.center_x + frequency * Math.cos(angle),
+											Sound.center_y + frequency * Math.sin(angle));
+										start_point.x = Sound.center_x + frequency * Math.cos(angle);
+										start_point.y = Sound.center_y + frequency * Math.sin(angle);
+									}
+									else
+										Sound.context.lineTo(
+											Sound.center_x + frequency * Math.cos(angle),
+											Sound.center_y + frequency * Math.sin(angle),
+											);
+									if(i == show_points - 1)
+									{
+										Sound.context.lineTo(
+											start_point.x, start_point.y
+											);
+									}
+								}
+								//Sound.context.closePath();
+								Sound.context.stroke();
+							}
+						}
+
+					}
+					this.element.play();
+				}
+			}
+			// audio = new Audio();
+			// audio.addEventListener('canplay', function(){
+			// 	sound = context.createMediaElementSource(audio);
+			// 	sound.connect(context.destination);
+			// 	audio.play();
+			// });
+			// audio.src = 'mp3/test.mp3';
+		</script>
+	</head>
+	<body>
+		<canvas id="mycanvas" width="512" height="512">
+
+		</canvas>
+
+
+		<div class="main" id="graph" style="">
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+		</div>
+	</body>
+</html>
