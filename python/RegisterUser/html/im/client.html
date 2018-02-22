@@ -1,0 +1,208 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1.0">
+		<meta name="renderer" content="webkit">
+		
+		<title>即时通讯毕业设计●董保森</title>
+		
+		<link href="/static/hplus/css/bootstrap.min.css?v=3.3.6" rel="stylesheet">
+		<link href="/static/hplus/css/font-awesome.min.css?v=4.4.0" rel="stylesheet">
+		<link href="/static/hplus/css/animate.css" rel="stylesheet">
+		<link href="/static/hplus/css/style.css?v=4.1.0" rel="stylesheet">
+		
+		<style type="text/css">
+			.button{
+				color:#000;
+				text-decoration:none;
+				display:inline-block;
+				border-radius:10px;
+				padding:5px;
+				background-color:#fff;
+			}
+			.button:hover{
+				background:#eee;
+			}
+		</style>
+	<script src="/static/vue/vue.js" rel="stylesheet"></script>
+	<script>
+		//基本框架
+			var IMClientEvent = {
+				open:function(){
+					console.log("open");
+				},
+				message:function(event){
+					var data = event.data;
+					//console.log(data);
+					var newBlob = data.slice(0, data.size);
+					console.log(newBlob);
+					var reader = new FileReader();
+					//reader.readAsBinaryString(newBlob);
+					reader.readAsText(newBlob, "utf-8");
+					reader.onload = function(evt){
+						var result = evt.target.result;
+						console.log(result);
+						document.getElementById("show_message").innerHTML = result;
+					}
+					//document.getElementById("show_message").innerHTML = data;
+				},
+				close:function(){
+						console.log("close");
+				}
+			};
+		function send_message(){
+			var message = document.getElementById("message");
+			ws.send(message.value);
+		}
+		//基本操作
+		var ws;
+		window.onload = function(){
+			var server_ip = "ws://127.0.0.1:11111";
+			ws = new WebSocket(server_ip);
+			ws.onopen = IMClientEvent.open;
+			ws.onmessage = IMClientEvent.message;
+			ws.onclose = IMClientEvent.close;
+		}
+	</script>
+	
+	</head>
+	<body>
+		<!--
+		<div style="position:relative;background-color:#ff8978;width:300px;height:600px;margin:0px auto;">
+			<div id="show_message" style="background-color:rgba(255, 255, 255, 0.5);width:100%;height:70%;">
+					
+			</div>
+			<div style="height:25%">
+				<textarea id="message" style="width:100%;height:100%;resize:none;"></textarea>
+			</div>
+			
+			<div style="">
+				<a class="button" href="javascript:void(0)" onclick="send_message()">发送消息</a>
+			</div>
+		</div>
+		-->
+		<div style="width:400px;margin:0px auto;">
+			<div class="chat-users"style="height:600px;">
+				<div class="users-list" id="show_user_friends">
+					<div class="chat-user" v-for="friend in friends">
+						<template v-if="friend[3]" >
+							<span class="pull-right label label-primary">在线</span>
+						</template>
+						<img class="chat-avatar" v-bind:src="'/static/image/portrait/'+friend[4]" onerror="javascript:this.src='/static/image/portrait/default.png'" >
+						<div class="chat-user-name">
+							<!-- 保存一下用户的id -->
+							<a href="javascript:void(0)" v-bind:onclick="'open_dialog('+friend[0]+')'" style="display:block;width:100%;">[[ friend[1] ]]</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- 聊天对话框 -->
+		<div class="row" id="dialog_chat" style="width:400px;position:fixed;left:10px;top:10px;background-color:#fff;box-shadow:3px 3px 3px #000;">
+			<div class="col-sm-12">
+				<div class="ibox chat-view">
+					<div class="ibox-title">
+						<small class="pull-right text-muted">最新消息：2015-02-02 18:39:23</small>聊天窗口
+					</div>
+				</div>
+				
+				<div class="ibox-content">
+					<div class="row">
+						<div class="col-md-9">
+							<div class="chat-discussion">
+								<div class="chat-message" v-for="message in messages">
+									<!-- 是否是当前用户 -->
+									<template v-if="message[2] == self_info[0]">
+										<img class="message-avatar" style="float:right;margin-left:10px;margin-right:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
+										<div class="message" style="margin-right:55px;margin-left:0px;text-align:right;">
+											<a class="message-author" >[[ self_info[1] ]]</a>
+											<span class="message-date" style="float:left;">[[ message[5] ]]</span>
+											<span class="message-content">[[ message[3] ]]</span>
+										</div>
+									</template>
+									<template v-if="message[2] != self_info[0]">
+										<img class="message-avatar" style="float:left;margin-right:10px;margin-left:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
+										<div class="message" style="margin-left:55px;margin-right:0px;text-align:left;">
+											<a class="message-author" >[[ chat_info[1] ]]</a>
+											<span class="message-date" style="float:right;">[[ message[5] ]]</span>
+											<span class="message-content">[[ message[3] ]]</span>
+										</div>
+									</template>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+			</div>
+				<div class="form-group">
+					<textarea class="form-control message-input" name="message" placeholder="请输入消息"></textarea>
+					<button class="btn btn-info">点击发送</button>
+				</div>
+		</div>
+		
+		<script src="/static/hplus/js/jquery.min.js?v=2.1.4"></script>
+		<script src="/static/hplus/js/bootstrap.min.js?v=3.3.6"></script>
+		<script src="/static/hplus/js/plugins/metisMenu/jquery.metisMenu.js"></script>
+		<script src="/static/hplus/js/plugins/slimscroll/jquery.slimscroll.min.js"></script>
+		<script src="/static/hplus/js/plugins/layer/layer.min.js"></script>
+		<script src="/static/hplus/js/hplus.js?v=4.1.0"></script>
+		<script type="text/javascript" src="/static/hplus/js/contabs.js"></script>
+		<script src="/static/hplus/js/plugins/pace/pace.min.js"></script>
+		
+		
+		<!-- 渲染用户列表 -->
+		<script>
+			//渲染好友列表
+			var data = {
+				friends:[],		//好友列表
+			};
+			var vm = new Vue({
+				delimiters:['[[', ']]'],
+				el:"#show_user_friends",
+				data:data,
+				created:function(){}
+			});
+			//渲染聊天界面
+			var data_chat = {
+				self_info:[1, 'f', 'f', 0, 'a'],
+				chat_info:[2, 'a', 'a', 0, 'b'],
+				messages:[
+					[1, 2, 1, 'fafda', 0, 2123],
+					[2, 1, 2, 'fjalkda', 0, 3242],
+					[3, 1, 2, '你好你好你好，你好你好', 0, 32332]
+				]
+			};
+			var vm_chat = new Vue({
+				delimiters:['[[', ']]'],
+				el:"#dialog_chat",
+				data:data_chat,
+				created:function(){}
+			});
+			//更新好友列表
+			function update_friends(){
+				$.ajax({
+					url:"/json/get_friends",
+					data:{
+						user_id:{{id}},
+					},
+					success:function(data){
+						if(data.code == 200)
+							vm.friends = data.data;
+					}
+				});
+			}
+			//弹出对话框
+			function open_dialog(user_id){
+				//var user_id = $(obj).parent().find("div").attr("id");
+				console.log(user_id);
+			}
+			$(document).ready(function(){
+				update_friends();
+			});
+			
+		</script>
+	</body>
+</html>

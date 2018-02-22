@@ -2,14 +2,15 @@
 import re;
 
 class FDataBase:
-	#conn = pymssql.connect(host='127.0.0.1', user='sa', password='root', database='IMDBS');
-	#cur = conn.cursor();
+	conn = pymssql.connect(host='127.0.0.1', user='sa', password='root', database='IMDBS');
+	cur = conn.cursor();
 	def __init__(self):
-		self.conn = pymssql.connect(host='127.0.0.1', user='sa', password='root', database='IMDBS');
-		self.cur = self.conn.cursor();
+		#self.conn = pymssql.connect(host='127.0.0.1', user='sa', password='root', database='IMDBS');
+		#self.cur = self.conn.cursor();
 		pass;
 	def __del__(self):
-		self.cur.close();
+		#self.cur.close();
+		pass;
 	def show(self, name, password):
 		sql_str = 'select * from users where name=\''+name+'\' and password=\''+password+'\'';
 		self.cur.execute(sql_str);
