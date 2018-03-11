@@ -27,42 +27,55 @@
 		</style>
 	<script src="/static/vue/vue.js" rel="stylesheet"></script>
 	<script>
-		//基本框架
+			//基本框架
 			var IMClientEvent = {
-				open:function(){
-					console.log("open");
+				ws:null,
+				server_ip:"ws://127.0.0.1:11111",
+				//事件函数
+				onopen:function(){
+					console.log("000");
+					//发送登录消息
+					var msg = new MessageObject(LOGIN_TYPE,{{id}}, 0, "");
+					IMClientEvent.send_message(JSON.stringify(msg));
 				},
-				message:function(event){
+				onmessage:function(event){
 					var data = event.data;
-					//console.log(data);
 					var newBlob = data.slice(0, data.size);
-					console.log(newBlob);
 					var reader = new FileReader();
 					//reader.readAsBinaryString(newBlob);
 					reader.readAsText(newBlob, "utf-8");
 					reader.onload = function(evt){
 						var result = evt.target.result;
-						console.log(result);
-						document.getElementById("show_message").innerHTML = result;
+						receive_message(result);
 					}
-					//document.getElementById("show_message").innerHTML = data;
 				},
-				close:function(){
-						console.log("close");
+				onclose:function(){
+				},
+				//功能函数
+				//初始化
+				init:function(){
+					IMClientEvent.ws = new WebSocket(IMClientEvent.server_ip);
+					IMClientEvent.ws.onopen = IMClientEvent.onopen;
+					IMClientEvent.ws.onmessage = IMClientEvent.onmessage;
+					IMClientEvent.ws.onclose = IMClientEvent.onclose;
+				},
+				send_message:function(message){
+					IMClientEvent.ws.send(message);
 				}
 			};
+			var MESSAGE_TYPE = 1,LOGIN_TYPE = 2,LOGOUT_TYPE = 3;
+			//消息框架
+			function MessageObject(flag,user_id,friend_id,message){
+				this.flag = flag;
+				this.user_id = user_id;
+				this.friend_id = friend_id;
+				this.message = message;
+			}
 		function send_message(){
-			var message = document.getElementById("message");
-			ws.send(message.value);
 		}
 		//基本操作
-		var ws;
 		window.onload = function(){
-			var server_ip = "ws://127.0.0.1:11111";
-			ws = new WebSocket(server_ip);
-			ws.onopen = IMClientEvent.open;
-			ws.onmessage = IMClientEvent.message;
-			ws.onclose = IMClientEvent.close;
+			IMClientEvent.init();
 		}
 	</script>
 	
@@ -82,25 +95,6 @@
 			</div>
 		</div>
 		-->
-		<div style="width:400px;margin:0px auto;">
-			<div class="chat-users"style="height:600px;">
-				<div class="users-list" id="show_user_friends">
-					<div class="chat-user" v-for="friend in friends">
-						<template v-if="friend[3]" >
-							<span class="pull-right label label-primary">在线</span>
-						</template>
-						<img class="chat-avatar" v-bind:src="'/static/image/portrait/'+friend[4]" onerror="javascript:this.src='/static/image/portrait/default.png'" >
-						<div class="chat-user-name">
-							<!-- 保存一下用户的id -->
-							<a href="javascript:void(0)" v-bind:onclick="'open_dialog('+friend[0]+')'" style="display:block;width:100%;">[[ friend[1] ]]</a>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		
-		<!-- 聊天对话框 -->
-		<div class="row" id="dialog_chat" style="width:400px;position:fixed;left:10px;top:10px;background-color:#fff;box-shadow:3px 3px 3px #000;">
 			<div class="col-sm-12">
 				<div class="ibox chat-view">
 					<div class="ibox-title">
@@ -110,38 +104,74 @@
 				
 				<div class="ibox-content">
 					<div class="row">
-						<div class="col-md-9">
-							<div class="chat-discussion">
-								<div class="chat-message" v-for="message in messages">
-									<!-- 是否是当前用户 -->
-									<template v-if="message[2] == self_info[0]">
-										<img class="message-avatar" style="float:right;margin-left:10px;margin-right:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
-										<div class="message" style="margin-right:55px;margin-left:0px;text-align:right;">
-											<a class="message-author" >[[ self_info[1] ]]</a>
-											<span class="message-date" style="float:left;">[[ message[5] ]]</span>
-											<span class="message-content">[[ message[3] ]]</span>
+						<div class="col-md-9 col-sm-9">
+							<div class="chat-discussion" id="dialog_chat">
+								<!-- 判断用户消息数量 -->
+									<div class="chat-message" v-for="message in messages">
+										<!-- 是否是当前用户 -->
+										<template v-if="message[1] == self_info[0]">
+											<img class="message-avatar" style="float:right;margin-left:10px;margin-right:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
+											<div class="message" style="margin-right:55px;margin-left:0px;text-align:right;">
+												<a class="message-author" >[[ self_info[1] ]]</a>
+												<span class="message-date" style="float:left;">[[ message[5]|time ]]</span>
+												<span class="message-content">[[ message[3] ]]</span>
+											</div>
+										</template>
+										<template v-if="message[1] != self_info[0]">
+											<img class="message-avatar" style="float:left;margin-right:10px;margin-left:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
+											<div class="message" style="margin-left:55px;margin-right:0px;text-align:left;">
+												<a class="message-author" >[[ chat_info[1] ]]</a>
+												<span class="message-date" style="float:right;">[[ message[5]|time ]]</span>
+												<span class="message-content">[[ message[3] ]]</span>
+											</div>
+										</template>
+									</div>
+									<!-- 如果为空则直接显示 -->
+									<div class="empty" v-show="messages.length == 0">
+										empty
+									</div>
+							</div>
+							<div class="form-group">
+								<textarea class="form-control message-input" id="message" name="message" placeholder="请输入消息"></textarea>
+								<button class="btn btn-info" onclick="send_message()">点击发送</button>
+							</div>
+						</div>
+						
+						<!-- 用户列表-->
+						<div class="col-md-3 col-sm-3">
+							<div class="chat-users"style="height:600px;">
+								<div class="users-list" id="show_user_friends">
+									<div class="chat-user" v-for="friend in friends">
+										<template v-if="friend[3] == 1" >
+											<span class="pull-right label label-primary">在线</span>
+										</template>
+										<template v-if="friend[3] == 2">
+											<span class="pull-right label label-danger">有新消息</span>
+										</template>
+										<img class="chat-avatar" v-bind:src="'/static/image/portrait/'+friend[4]" onerror="javascript:this.src='/static/image/portrait/default.png'" >
+										<div class="chat-user-name">
+											<!-- 保存一下用户的id -->
+											<a href="javascript:void(0)" v-bind:onclick="'open_dialog('+friend[0]+')'" style="display:block;width:100%;">[[ friend[1] ]]</a>
 										</div>
-									</template>
-									<template v-if="message[2] != self_info[0]">
-										<img class="message-avatar" style="float:left;margin-right:10px;margin-left:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
-										<div class="message" style="margin-left:55px;margin-right:0px;text-align:left;">
-											<a class="message-author" >[[ chat_info[1] ]]</a>
-											<span class="message-date" style="float:right;">[[ message[5] ]]</span>
-											<span class="message-content">[[ message[3] ]]</span>
-										</div>
-									</template>
+									</div>
 								</div>
 							</div>
 						</div>
+						
 					</div>
 				</div>
 				
 			</div>
+		
+		<!-- 聊天对话框 -->
+		<!--
+		<div class="row" id="dialog_chat" style="width:400px;position:fixed;left:10px;top:10px;background-color:#fff;box-shadow:3px 3px 3px #000;">
 				<div class="form-group">
 					<textarea class="form-control message-input" name="message" placeholder="请输入消息"></textarea>
 					<button class="btn btn-info">点击发送</button>
 				</div>
 		</div>
+		-->
 		
 		<script src="/static/hplus/js/jquery.min.js?v=2.1.4"></script>
 		<script src="/static/hplus/js/bootstrap.min.js?v=3.3.6"></script>
@@ -155,10 +185,15 @@
 		
 		<!-- 渲染用户列表 -->
 		<script>
+			//-------------------vue数据初始化-----------------------
 			//渲染好友列表
 			var data = {
 				friends:[],		//好友列表
 			};
+			Vue.filter("time", function(value){
+				var date = new Date(value);
+				return date.getFullYear()+"-"+(date.getMonth()+1)+"-"+date.getDate();
+			});
 			var vm = new Vue({
 				delimiters:['[[', ']]'],
 				el:"#show_user_friends",
@@ -167,13 +202,9 @@
 			});
 			//渲染聊天界面
 			var data_chat = {
-				self_info:[1, 'f', 'f', 0, 'a'],
-				chat_info:[2, 'a', 'a', 0, 'b'],
-				messages:[
-					[1, 2, 1, 'fafda', 0, 2123],
-					[2, 1, 2, 'fjalkda', 0, 3242],
-					[3, 1, 2, '你好你好你好，你好你好', 0, 32332]
-				]
+				self_info:[{{id}}, '{{name}}', '{{password}}', 0, 'a'],
+				chat_info:[],
+				messages:[]
 			};
 			var vm_chat = new Vue({
 				delimiters:['[[', ']]'],
@@ -181,6 +212,52 @@
 				data:data_chat,
 				created:function(){}
 			});
+			function receive_message(message){
+				message = JSON.parse(message);
+				//是发送消息
+				if(message.flag == MESSAGE_TYPE){
+					
+					//判断好友用户中是否存在该人
+					for(var i = 0; i < vm.friends.length; i ++){
+						if(message.user_id == vm.friends[i][0]){
+							vm.friends[i][3] = 2;					//改变状态
+							//判断当前点开的聊天窗口是否是发消息的人
+							if(vm_chat.chat_info.length > 0 && vm_chat.chat_info[0] == message.user_id){
+								vm_chat.messages.push([0,message.user_id,{{id}},message.message,1,message.date]);
+							}
+							vm.$forceUpdate();
+							return;
+						}
+					}
+					//否则就将人员数据添加进去
+				}
+			}
+			//发送消息
+			function send_message(){
+				//输出消息
+				var friend = vm_chat.chat_info;
+				var message = $("#message").val();
+				if(message.length > 0 && "" != message && typeof(friend) != "undefined" && friend.length > 0){
+					//构造消息
+					var msg = new MessageObject(MESSAGE_TYPE, {{id}},friend[0],message);
+					IMClientEvent.send_message(JSON.stringify(msg));
+					vm_chat.messages.push([0,{{id}},friend[0], message, 1, (new Date()).valueOf()]);
+					
+					/*
+					$.ajax({
+							url:"/json/send_message",
+							data:{
+								user_id:friend[0],
+								message:message
+							},
+							success:function(data){
+								
+							}
+						}
+					);*/
+				}
+			}
+			
 			//更新好友列表
 			function update_friends(){
 				$.ajax({
@@ -196,8 +273,38 @@
 			}
 			//弹出对话框
 			function open_dialog(user_id){
-				//var user_id = $(obj).parent().find("div").attr("id");
-				console.log(user_id);
+				//获取这个好友的用户信息
+				$.ajax({
+					url:"/json/get_user_info",
+					contentType: "application/x-www-form-urlencoded; charset=utf-8",
+					data:{
+						user_id:user_id,
+					},
+					success:function(data){
+						if(data.code == 200)
+						{
+							vm_chat.chat_info = data.data[0];
+							//如果用户点击的是有新消息的用户，那么则改变其状态
+							for(var i = 0; i < vm.friends.length; i ++){
+								if(vm.friends[i][0] == vm_chat.chat_info[0] && vm.friends[i][3] == 2){
+									vm.friends[i][3] = 1;
+								}
+							}
+							vm.$forceUpdate();
+						}
+					}
+				});
+				//获取与当前这个好友的聊天记录
+				$.ajax({
+					url:"/json/get_message",
+					data:{
+						user_id:user_id
+					},
+					success:function(data){
+						if(data.code == 200)
+							vm_chat.messages = data.data;
+					}
+				});
 			}
 			$(document).ready(function(){
 				update_friends();

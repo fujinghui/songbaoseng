@@ -20,8 +20,7 @@ def index(request):
 		content['id'] = request.session.get("id");
 		content['name'] = request.session.get("name");
 		content['password'] = request.session.get("password");
-		return render(request, "im/client.html", content);
-		
+		return render(request, "im/client.html", content)
 		#return HttpResponseRedirect(request.path);
 		#return HttpResponseRedirect(request.path);
 		#return HttpResponse(request.path, content_type="application/json");
@@ -48,4 +47,5 @@ def index(request):
 	#	response = ResponseModel(1000, "用户不存在！");
 	#else:
 	#	response = ResponseModel(200, "用户已存在！");
-	#return HttpResponse(json.dumps(response, ensure_ascii=False), content_type="application/json");
+	#return HttpResponse(json.dumps(response, ensure_ascii=False), content_type="application/json");;
+		

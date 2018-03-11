@@ -2,7 +2,7 @@
 import re;
 
 class FDataBase:
-	conn = pymssql.connect(host='127.0.0.1', user='sa', password='root', database='IMDBS');
+	conn = pymssql.connect(host='127.0.0.1', user='sa', password='root', database='IMDBS',charset='utf8');
 	cur = conn.cursor();
 	def __init__(self):
 		#self.conn = pymssql.connect(host='127.0.0.1', user='sa', password='root', database='IMDBS');

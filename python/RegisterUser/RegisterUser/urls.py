@@ -14,7 +14,7 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
-from . import view, register,play,filter,im,friend;
+from . import view, register,play,filter,im,data_interface;
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -29,10 +29,14 @@ urlpatterns = [
 	url(r'^[^json].*$', filter.index),
 	url(r'^im/client$', im.client),
 	url(r'^register_html$', register.register_html),
+	
 	url(r'^json/logout$', register.logout),
     url(r'^json/register$', register.register),
 	url(r'^json/login$', register.login),
-	url(r'^play$', play.play),
+	url(r'^json/play$', play.play),
 	#与用户信息相关的文件的配置
-	url(r'^json/get_friends$', friend.get_friends),
+	url(r'^json/get_friends$', data_interface.get_friends),			#获取好友列表
+	url(r'^json/get_message$', data_interface.get_message),			#获取发送的消息
+	url(r'^json/get_user_info$', data_interface.get_user_info),		#获取用户信息
+	url(r'^json/send_message$', data_interface.send_message),		#发送消息
 ]
