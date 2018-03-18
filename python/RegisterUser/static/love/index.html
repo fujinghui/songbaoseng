@@ -16,6 +16,8 @@
 		}
 	</style>
 	<body style="background:#eeffee">
+		<canvas id="main_canvas" style="position:absolute;top:0px;left:0px;width:100%;height:100%;">
+		</canvas>
 		<div id="siyu_result"></div>
 	</body>
 	<script>
@@ -34,11 +36,11 @@
 		var love_count = 9;
 		//开场动画
 		var siyu_start = {
+			canvas:null,
 			show_data:love_line_data,
 			delay_time:10,
 			show_count:0,
 			animation:function(){
-				//console.log(siyu_start.show_data);
 				var all_count = siyu_start.show_data.length * siyu_start.show_data[0].length;
 				//动画停止
 				if(siyu_start.show_count >= all_count)
@@ -58,7 +60,6 @@
 				var div = document.createElement("div");
 				$(siyu_start.div_siyu_love).append(div);
 				if(siyu_start.show_data[y][x] == 1){
-					//$(div).css("background", "rgba(255, 125, 125, 0.5)");
 					$(div).css("background", "rgba(255, 125, 125, 0.5)");
 				}
 				siyu_start.show_count ++;
@@ -66,6 +67,8 @@
 			},
 			//开启动画
 			start:function(){
+				this.context = siyu_start.canvas.getContext("2d");
+				
 				setTimeout(siyu_start.animation, siyu_start.delay_time);
 			},
 			//结束动画
@@ -73,14 +76,17 @@
 				siyu_music.load("media/bzyy.mp3");
 			}
 		};
+		
 		//音乐
 		var siyu_music = {
+			canvas:null,
 			context:null,
 			analyser:null,
 			processor:null,
 			data:null,
 			music_object:null,
 			load:function(file){
+				
 				//使用Promise对象进行异步操作
 				new Promise(function(resolv, reject){
 					var audio = new Audio();
@@ -130,36 +136,55 @@
 				}
 			},
 			animation:function(){
+				var context = siyu_music.canvas.getContext("2d");
 				var count = 55;			//有55个方格
 				siyu_music.analyser.getByteTimeDomainData(siyu_music.data);
+				var width = siyu_music.canvas.width;
+				var height = siyu_music.canvas.height;
+				var offset2 = Math.floor(siyu_music.data.length / count) / 3;
+				context.clearRect(0, 0, width, height);
 				
 				var index = 0;
-				var offset2 = Math.floor(siyu_music.data.length / count) / 3;
-				$("#siyu_result").find(".siyu_love").each(function(y){
-					$(this).find("div").each(function(x){
-						if(love_line_data[y][x] == 1)
-						{
+				for(var i = 0; i < love_line_data.length; i ++){
+					for(var j = 0; j < love_line_data[i].length; j ++){
+						if(love_line_data[i][j] == 1){
+							var cw = Math.floor(width / love_line_data[i].length);
+							var ch = Math.floor(height / love_line_data.length);
+							
 							var r = 0, g = 0, b = 0;
 							var offset = Math.floor(siyu_music.data.length / count) * index;
-							for(var j = 0; j < offset2; j ++)
+							for(var ai = 0; ai < offset2; ai ++)
 								r += siyu_music.data[offset + offset2 * 0];
-							for(var j = 0; j < offset2; j ++)
+							for(var ai = 0; ai < offset2; ai ++)
 								g += siyu_music.data[offset + offset2 * 1];
-							for(var j = 0; j < offset2; j ++)
+							for(var ai = 0; ai < offset2; ai ++)
 								b += siyu_music.data[offset + offset2 * 2];
-							
-							r = Math.floor(r / offset2) * 2;//r % 255;//Math.floor(r / offset) % 255;
-							g = Math.floor(g / offset2) * 1.5;//g % 255;//Math.floor(g / offset) % 255;
-							b = Math.floor(b / offset2 ) * 1.5;//b % 255;//Math.floor(b / offset) % 255;
+							r = Math.floor(r / offset2) * 2;				//r % 255;//Math.floor(r / offset) % 255;
+							g = Math.floor(g / offset2) * 1.5;				//g % 255;//Math.floor(g / offset) % 255;
+							b = Math.floor(b / offset2) * 1.5;				//b % 255;//Math.floor(b / offset) % 255;
 							r = (r>255)?255:r; g = (g>255)?255:g; b = (b>255)?255:b;
 							var alpha = Math.floor((r + g + b) / 3);
 							alpha = (alpha - 125) * 2;
 							alpha = (alpha+255)/2/255;
 							alpha = alpha<0?0.0:alpha;
 							alpha = alpha>1.0?1.0:alpha;
+							
+							context.fillStyle = "rgba("+r+", "+g+", "+b+", "+alpha+")";
+							context.fillRect(j * cw, i * ch, cw-6, ch-6);
+							
+							index ++;
+						}
+					}
+				}
+				return;
+				$("#siyu_result").find(".siyu_love").each(function(y){
+					$(this).find("div").each(function(x){
+						if(love_line_data[y][x] == 1)
+						{
+
+							
 							$(this).css("background", "rgba("+(r)+","+(g)+","+(b)+","+1.0+")");
-							//$(this).css("background", "rgb("+r+","+g+","+b+")");
-							//$(this).css("background", "rgba(125, 125, 125, "+(alpha/255)+")");
+							
 							index ++;
 						}
 					});
@@ -167,10 +192,18 @@
 			}
 		};
 		
-		
 		$(document).ready(function(){
+			var canvas = document.getElementById("main_canvas");
+			canvas.width = 500;//document.body.clientWidth;
+			canvas.height = 400;//document.body.clientHeight;
+			
+			siyu_start.canvas = canvas;
+			siyu_music.canvas = canvas;
 			//开启动画
-			siyu_start.start();
+			//siyu_start.start();
+			//siyu_music.play();
+			siyu_music.load("media/bzyy.mp3");
 		});
+		
 	</script>
 </html>

@@ -24,16 +24,76 @@
 			.button:hover{
 				background:#eee;
 			}
+			
+			.file {
+				position: relative;
+				/*display: inline-block;*/
+				background: #D0EEFF;
+				border: 1px solid #99D3F5;
+				border-radius: 4px;
+				padding: 4px 12px;
+				overflow: hidden;
+				color: #1E88C7;
+				text-decoration: none;
+				text-indent: 0;
+				line-height: 20px;
+			}
+			.file input {
+				position: absolute;
+				font-size: 100px;
+				right: 0;
+				top: 0;
+				opacity: 0;}
+			.file:hover {
+				background: #AADFFD;
+				border-color: #78C3F3;
+				color: #004974;
+				text-decoration: none;
+			}
 		</style>
 	<script src="/static/vue/vue.js" rel="stylesheet"></script>
 	<script>
+			//上传文件
+			function UplodFile(url, call_func){
+				
+				//call_func("aaa");
+				
+				var FileController = url;
+				var form = new FormData();
+				form.append("image_file", $("#image_file").get(0).files[0]);
+				form.append("isGroup", isGroup);
+				form.append("user_id", {{id}});
+				if(vm_chat.chat_info.length > 0)
+					form.append("friend_id", vm_chat.chat_info[0]);
+				else
+					form.append("friend_id", 0);
+				
+				var xhr = new XMLHttpRequest();
+				xhr.open("post", FileController, true);
+				xhr.onload = function(){
+					if(xhr.status == 200)
+					{
+						var json = JSON.parse(xhr.responseText);
+						if(json.code == 200)
+						{
+							if(call_func)
+								call_func(json.data[0]);
+						}
+					}
+				}
+				xhr.upload.addEventListener("progress", null ,false);
+				xhr.send(form);
+				return;
+			}
 			//基本框架
 			var IMClientEvent = {
 				ws:null,
+				isSendMessage:null,
+				messageCallFunc:null,
+				responseType:null,
 				server_ip:"ws://127.0.0.1:11111",
 				//事件函数
 				onopen:function(){
-					console.log("000");
 					//发送登录消息
 					var msg = new MessageObject(LOGIN_TYPE,{{id}}, 0, "");
 					IMClientEvent.send_message(JSON.stringify(msg));
@@ -42,14 +102,28 @@
 					var data = event.data;
 					var newBlob = data.slice(0, data.size);
 					var reader = new FileReader();
-					//reader.readAsBinaryString(newBlob);
+					
 					reader.readAsText(newBlob, "utf-8");
 					reader.onload = function(evt){
 						var result = evt.target.result;
+						result = JSON.parse(result);
 						receive_message(result);
+						//消息已发送
+						if(IMClientEvent.isSendMessage){
+							//判断消息类型是否对应
+							if(getMessageTypeInverse(IMClientEvent.responseType)
+							== result.flag)
+							{
+								IMClientEvent.messageCallFunc(result);
+								IMClientEvent.messageCallFunc = null;
+								IMClientEvent.isSendMessage = false;
+								IMClientEvent.responseType = 0;
+							}
+						}
 					}
 				},
 				onclose:function(){
+					console.log("close");
 				},
 				//功能函数
 				//初始化
@@ -59,20 +133,48 @@
 					IMClientEvent.ws.onmessage = IMClientEvent.onmessage;
 					IMClientEvent.ws.onclose = IMClientEvent.onclose;
 				},
-				send_message:function(message){
+				send_message:function(message, call_func){
+					if(call_func)
+					{
+						IMClientEvent.isSendMessage = true;				//标记消息已发送
+						IMClientEvent.messageCallFunc = call_func;		//设置回调函数
+						IMClientEvent.responseType = JSON.parse(message).flag;		//设置应答类型
+					}
 					IMClientEvent.ws.send(message);
 				}
 			};
-			var MESSAGE_TYPE = 1,LOGIN_TYPE = 2,LOGOUT_TYPE = 3;
+			
+			var MESSAGE_TYPE = 1,
+			LOGIN_TYPE = 2,
+			LOGOUT_TYPE = 3,
+			MESSAGE_RESPONSE_TYPE = 4,
+			GROUP_MESSAGE_TYPE = 5,
+			GROUP_MESSAGE_RESPONSE_TYPE = 6;
+			var isGroup = 0;
+			//求消息类型的逆，例如是发送请求时，逆为消息应答请求
+			function getMessageTypeInverse(message){
+				if(message == MESSAGE_TYPE){
+					return MESSAGE_RESPONSE_TYPE;
+				}
+				else if(message == MESSAGE_RESPONSE_TYPE){
+					return MESSAGE_TYPE;
+				}
+				else if(message == GROUP_MESSAGE_TYPE){
+					return GROUP_MESSAGE_RESPONSE_TYPE;
+				}
+				else if(message == GROUP_MESSAGE_RESPONSE_TYPE){
+					return GROUP_MESSAGE_TYPE;
+				}
+				return 0;
+			}
 			//消息框架
-			function MessageObject(flag,user_id,friend_id,message){
+			function MessageObject(flag,user_id,friend_id,message,is_image){
 				this.flag = flag;
 				this.user_id = user_id;
 				this.friend_id = friend_id;
 				this.message = message;
+				this.is_image = is_image;
 			}
-		function send_message(){
-		}
 		//基本操作
 		window.onload = function(){
 			IMClientEvent.init();
@@ -81,20 +183,6 @@
 	
 	</head>
 	<body>
-		<!--
-		<div style="position:relative;background-color:#ff8978;width:300px;height:600px;margin:0px auto;">
-			<div id="show_message" style="background-color:rgba(255, 255, 255, 0.5);width:100%;height:70%;">
-					
-			</div>
-			<div style="height:25%">
-				<textarea id="message" style="width:100%;height:100%;resize:none;"></textarea>
-			</div>
-			
-			<div style="">
-				<a class="button" href="javascript:void(0)" onclick="send_message()">发送消息</a>
-			</div>
-		</div>
-		-->
 			<div class="col-sm-12">
 				<div class="ibox chat-view">
 					<div class="ibox-title">
@@ -107,22 +195,39 @@
 						<div class="col-md-9 col-sm-9">
 							<div class="chat-discussion" id="dialog_chat">
 								<!-- 判断用户消息数量 -->
-									<div class="chat-message" v-for="message in messages">
+									
+									<div class="chat-message" v-for="message in messages" style="padding-right:100px;">
 										<!-- 是否是当前用户 -->
 										<template v-if="message[1] == self_info[0]">
 											<img class="message-avatar" style="float:right;margin-left:10px;margin-right:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
-											<div class="message" style="margin-right:55px;margin-left:0px;text-align:right;">
-												<a class="message-author" >[[ self_info[1] ]]</a>
+											<div class="message" style="margin-right:55px;margin-left:0px;text-align:right;" >
+												<a class="message-author" >[[ message[7] ]]</a>
 												<span class="message-date" style="float:left;">[[ message[5]|time ]]</span>
-												<span class="message-content">[[ message[3] ]]</span>
+												<span class="message-content">
+													<!-- 判断是不是图片 -->
+													<template v-if="message[6] == 1">
+														<img v-bind:src="'/static/image/im_image/'+message[3]" style="max-width:100%;">
+													</template>
+													<template v-if="message[6] != 1">
+														[[ message[3] ]]
+													</template>
+												</span>
 											</div>
 										</template>
 										<template v-if="message[1] != self_info[0]">
 											<img class="message-avatar" style="float:left;margin-right:10px;margin-left:0px;" v-bind:src="'/static/image/portrait/'+self_info[4]" onerror="this.src='/static/image/portrait/default.png'">
 											<div class="message" style="margin-left:55px;margin-right:0px;text-align:left;">
-												<a class="message-author" >[[ chat_info[1] ]]</a>
+												<a class="message-author" >[[ message[7] ]]</a>
 												<span class="message-date" style="float:right;">[[ message[5]|time ]]</span>
-												<span class="message-content">[[ message[3] ]]</span>
+												<span class="message-content">
+													<!-- 判断是不是图片 -->
+													<template v-if="message[6] == 1">
+														<img v-bind:src="'/static/image/im_image/'+message[3]" style="max-width:100%;">
+													</template>
+													<template v-if="message[6] != 1">
+														[[ message[3] ]]
+													</template>
+												</span>
 											</div>
 										</template>
 									</div>
@@ -130,17 +235,37 @@
 									<div class="empty" v-show="messages.length == 0">
 										empty
 									</div>
+									<!-- 群成员列表 -->
+									<template v-if="group_mitglieder.length > 0">
+										<div class="chat-users" style="position:absolute;right:0px;top:0px;height:100%;width:100px;background:rgb(255,255,255)" id="">
+											<h4>群成员</h4>
+											<div class="users-list">
+												<div class="chat-user" v-for="mitglieder in group_mitglieder">
+													<img class="chat-avatar" >
+													<div class="chat-user-name">
+														<a href="javascript:void(0)">[[ mitglieder[1] ]]</a>
+													</div>
+												</div>
+											</div>
+										</div>
+									</template>
 							</div>
+							
 							<div class="form-group">
 								<textarea class="form-control message-input" id="message" name="message" placeholder="请输入消息"></textarea>
+								<a href="javascript:;" class="file">选择文件
+									<input data-role="none" type="file" name="image_file" id="image_file" class='btn' style="font-size:10px;">
+								</a>
+								<div id="show_upload_img"></div>
 								<button class="btn btn-info" onclick="send_message()">点击发送</button>
 							</div>
 						</div>
 						
 						<!-- 用户列表-->
 						<div class="col-md-3 col-sm-3">
-							<div class="chat-users"style="height:600px;">
-								<div class="users-list" id="show_user_friends">
+							<h3>好友列表</h3>
+							<div class="chat-users" style="height:250px;" id="show_user_friends">
+								<div class="users-list">
 									<div class="chat-user" v-for="friend in friends">
 										<template v-if="friend[3] == 1" >
 											<span class="pull-right label label-primary">在线</span>
@@ -156,11 +281,21 @@
 									</div>
 								</div>
 							</div>
+							<h3>群聊天</h3>
+							<div class="chat-users" style="height:250px;" id="show_group">
+								<div class="users-list">
+									<div class="chat-user" v-for="group in groups">
+										<img class="chat-avatar" src="/static/image/portrait/group_default.png" >
+										<div class="chat-user-name">
+											<a href="javascript:void(0)" v-bind:onclick="'open_group_dialog('+group[0]+')'" style="display:block;width:100%;">[[ group[1] ]] </a>
+										</div>
+									</div>
+								</div>
+							</div>
 						</div>
 						
 					</div>
 				</div>
-				
 			</div>
 		
 		<!-- 聊天对话框 -->
@@ -181,7 +316,6 @@
 		<script src="/static/hplus/js/hplus.js?v=4.1.0"></script>
 		<script type="text/javascript" src="/static/hplus/js/contabs.js"></script>
 		<script src="/static/hplus/js/plugins/pace/pace.min.js"></script>
-		
 		
 		<!-- 渲染用户列表 -->
 		<script>
@@ -204,60 +338,28 @@
 			var data_chat = {
 				self_info:[{{id}}, '{{name}}', '{{password}}', 0, 'a'],
 				chat_info:[],
-				messages:[]
+				messages:[],
+				group_mitglieder:[]												//群成员
 			};
 			var vm_chat = new Vue({
 				delimiters:['[[', ']]'],
 				el:"#dialog_chat",
 				data:data_chat,
-				created:function(){}
+				created:function(){},
+				mounted:function(){				//渲染完成函数
+				}
 			});
-			function receive_message(message){
-				message = JSON.parse(message);
-				//是发送消息
-				if(message.flag == MESSAGE_TYPE){
-					
-					//判断好友用户中是否存在该人
-					for(var i = 0; i < vm.friends.length; i ++){
-						if(message.user_id == vm.friends[i][0]){
-							vm.friends[i][3] = 2;					//改变状态
-							//判断当前点开的聊天窗口是否是发消息的人
-							if(vm_chat.chat_info.length > 0 && vm_chat.chat_info[0] == message.user_id){
-								vm_chat.messages.push([0,message.user_id,{{id}},message.message,1,message.date]);
-							}
-							vm.$forceUpdate();
-							return;
-						}
-					}
-					//否则就将人员数据添加进去
-				}
-			}
-			//发送消息
-			function send_message(){
-				//输出消息
-				var friend = vm_chat.chat_info;
-				var message = $("#message").val();
-				if(message.length > 0 && "" != message && typeof(friend) != "undefined" && friend.length > 0){
-					//构造消息
-					var msg = new MessageObject(MESSAGE_TYPE, {{id}},friend[0],message);
-					IMClientEvent.send_message(JSON.stringify(msg));
-					vm_chat.messages.push([0,{{id}},friend[0], message, 1, (new Date()).valueOf()]);
-					
-					/*
-					$.ajax({
-							url:"/json/send_message",
-							data:{
-								user_id:friend[0],
-								message:message
-							},
-							success:function(data){
-								
-							}
-						}
-					);*/
-				}
-			}
-			
+			var data_group = {
+				groups:[],					//群
+			};
+			//群聊界面渲染
+			var vm_group = new Vue({
+				delimiters:['[[',']]'],
+				el:"#show_group",
+				data:data_group,
+				created:function(){},
+				mounted:function(){}
+			});
 			//更新好友列表
 			function update_friends(){
 				$.ajax({
@@ -271,8 +373,156 @@
 					}
 				});
 			}
+			//更新群列表
+			function update_groups(){
+				//获取群组
+				$.ajax({
+					url:"/json/get_groups",
+					data:{},
+					success:function(data){
+						if(data.code == 200)
+						{
+							vm_group.groups = data.data;
+							console.log(vm_group.groups);
+						}
+					}
+				});
+			}
+			//更新群成员关系
+			function group_mitglieder(group_id){
+				//取消展示
+				if(group_id == 0)
+				{
+					vm_chat.group_mitglieder = [];
+					vm_chat.$forceUpdate();
+					return;
+				}
+				$.ajax({
+					url:"/json/get_group_mitglieder",
+					data:{
+						group_id:group_id
+					},
+					success:function(data){
+						if(data.code == 200){
+							vm_chat.group_mitglieder = data.data;			//更新群好友
+							vm_chat.$forceUpdate();
+						}
+					}
+				});
+			}
+			
+			function receive_message(message){
+				console.log(message); 
+				//是发送消息
+				if(message.flag == MESSAGE_TYPE){
+					//判断好友用户中是否存在该人
+					for(var i = 0; i < vm.friends.length; i ++){
+						if(message.user_id == vm.friends[i][0]){
+							vm.friends[i][3] = 2;					//改变状态
+							//判断当前点开的聊天窗口是否是发消息的人
+							if(vm_chat.chat_info.length > 0 && vm_chat.chat_info[0] == message.user_id){
+								vm_chat.messages.push([0,message.user_id,{{id}},message.message,1,message.date, message.is_image, vm.friends[i][1]]);
+							}
+							vm_chat.$forceUpdate();
+							update_ui();
+							return;
+						}
+					}
+					//否则就将人员数据添加进去
+				}
+				else if(message.flag == GROUP_MESSAGE_TYPE){
+					//群消息类型。并且用户打开的房间正好就是发送来消息的这个房间
+					if(isGroup == message.friend_id){
+						vm_chat.messages.push([0, message.user_id, 0, message.message, 1, message.date, message.is_image, 'a']);
+						vm_chat.$forceUpdate();
+						update_ui();
+					}
+				}
+				else if(message.flag == MESSAGE_RESPONSE_TYPE){
+					//消息发送成功
+					if(message.status){
+						$("#message").val("");
+					}
+				}
+			}
+			
+			function update_ui(){
+				setTimeout(function(){
+					$("#dialog_chat")[0].scrollTop = 999999999;//$("#dialog_chat").outerHeight(true);;//$("#dialog_chat").offset().top;
+					//console.log("渲染完成！");
+				}, 500);
+			}
+			//发送消息
+			function send_message(){
+				//输出消息
+				var friend = vm_chat.chat_info;
+				var message = $("#message").val();
+				if(message.length > 0 && "" != message && typeof(friend) != "undefined"){
+					var msg = null;
+					//群组消息
+					if(isGroup > 0){
+						msg = new MessageObject(GROUP_MESSAGE_TYPE, {{id}}, isGroup, message, 0);
+					}
+					//非群组消息
+					else if(friend.length > 0){
+						//构造消息
+						msg = new MessageObject(MESSAGE_TYPE, {{id}}, friend[0], message, 0);
+					}
+					//消息不为空时发送
+					if(msg != null)
+					IMClientEvent.send_message(JSON.stringify(msg), function(){
+						//消息发送成功
+						vm_chat.messages.push([0,{{id}},friend[0], message, 1, (new Date()).valueOf(), 0]);
+						vm_chat.$forceUpdate();
+						update_ui();
+					});
+				}
+				//判断用户是否选择了文件
+				if(isSelectImage){
+					UplodFile("/json/upload_file", function(filename){
+						//文件提交成功的回调函数
+						$("#show_upload_img").html("");
+						isSelectImage = false;
+						$("#image_file")[0].value = '';
+						//消息发送成功
+						var msg = null;
+						if(isGroup > 0){
+							msg = new MessageObject(GROUP_MESSAGE_TYPE, {{id}}, isGroup, filename, 1);
+						}
+						else if(friend.length > 0){
+							msg = new MessageObject(MESSAGE_TYPE, {{id}}, friend[0], filename, 1);
+						}
+						if(msg != null){
+							IMClientEvent.send_message(JSON.stringify(msg), function(){
+								vm_chat.messages.push([0, {{id}}, friend[0], filename, 1, (new Date()).valueOf(), 1]);
+								vm_chat.$forceUpdate();
+								update_ui();
+							});
+						}
+					});
+				}
+			}
+			//弹出群聊对话框
+			function open_group_dialog(group_id){
+				isGroup = group_id;						//标记当前打开的是群组
+				$.ajax({
+					url:"/json/get_group_message",
+					data:{
+						group_id:group_id
+					},
+					success:function(data){
+						if(data.code == 200){
+							vm_chat.messages = data.data;
+							vm_chat.$forceUpdate();
+							group_mitglieder(group_id);			//更新群成员列表
+						}
+					}
+				});
+			}
 			//弹出对话框
 			function open_dialog(user_id){
+				isGroup = 0;					//标记当前打开的不是群组
+				group_mitglieder(0);				//隐藏掉右侧的用户列表
 				//获取这个好友的用户信息
 				$.ajax({
 					url:"/json/get_user_info",
@@ -302,12 +552,28 @@
 					},
 					success:function(data){
 						if(data.code == 200)
+						{
 							vm_chat.messages = data.data;
+							update_ui();				//更新ui
+						}
 					}
 				});
 			}
+			
+			var isSelectImage = false;
 			$(document).ready(function(){
 				update_friends();
+				update_groups();
+				//选择框
+				$("#image_file").change(function(){
+					var $file = $(this);
+					var objUrl = $file[0].files[0];
+					var windowURL = window.URL || window.webkitURL;
+					var dataURL;
+					dataURL = windowURL.createObjectURL(objUrl);
+					isSelectImage = true;
+					$("#show_upload_img").html("<img src='"+dataURL+"' style='width:150px;'>")
+				});
 			});
 			
 		</script>
