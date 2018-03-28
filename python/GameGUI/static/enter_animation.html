@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<script language="Javascript" src="js/FemyEngine.js"></script>
+		<script language="Javascript">			
+			var canvas, context;
+			function Partices(){
+				this.x = 0;
+				this.y = 0;
+				this.vx = 0;
+				this.vy = 0;
+				this.ax = 0;
+				this.ay = 0;
+				this.r = 3;
+			}
+			//粒子的数组
+			var partices = new Array();
+			var length = 100;
+			
+			window.onload = function(){
+				canvas = document.getElementById("my_canvas");
+				context = canvas.getContext("2d");
+				
+				for(var i = 0; i < length; i ++)
+				{
+					partices[i] = new Partices();
+					partices[i].x = Math.random() * canvas.width / 2;
+					partices[i].y = 0;//- Math.random() * canvas.height / 2;
+					partices[i].vx = 0;
+					partices[i].vy = 5;
+					partices[i].ax = 0.4;
+					partices[i].ay = 0;//Math.random() + 0.2;
+				}
+				draw();
+			}
+			
+			function draw(){
+				context.fillStyle = "rgba(30, 30, 30, 0.3)";
+				context.fillRect(0, 0, canvas.width, canvas.height);
+				
+				context.fillStyle = "rgb(240, 240, 200)";
+				for(var i = 0; i < partices.length; i ++)
+				{
+					context.beginPath();
+					context.arc(partices[i].x, partices[i].y, partices[i].r, 0, Math.PI * 2, false);
+					//context.fill();
+					partices[i].x += partices[i].vx;
+					partices[i].y += partices[i].vy;
+					partices[i].vx += partices[i].ax;
+					partices[i].vy += partices[i].ay;
+					
+					if(partices[i].x > canvas.width)
+					{
+						partices[i].x = Math.random() * canvas.width / 2;
+						partices[i].y = - Math.random() * canvas.height / 2;
+						partices[i].vx = 0;
+						partices[i].vy = 5;
+						partices[i].ax = partices[i].x/canvas.width/2 * 0.3+0.1;
+						partices[i].ay = 0;//Math.random() + 0.2;
+					}
+					
+					context.fill();
+				}
+				
+				
+				requestAnimationFrame(draw);
+			}
+			
+		</script>
+	</head>
+	<body>
+		<canvas id="my_canvas" width="800" height="600" style="border:1px solid #f04550">
+			
+		</canvas>
+	</body>
+	
+</html>

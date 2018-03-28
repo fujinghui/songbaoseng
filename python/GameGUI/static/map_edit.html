@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>地图编辑器</title>
+		<style type="text/css">
+			td{
+				width:50px;
+				height:50px;
+			}
+		</style>
+		<script language="JavaScript">
+			var map_x_count = 10, map_y_count = 10;
+			
+			
+			window.onload = function(){
+				
+			}
+			
+			
+			function init_map(){
+			//	console.log("test");
+			}
+			
+			
+			function set_use_map_image(){
+				document.getElementById("user_select_rect").src= "temp_image/" + document.getElementById("map_current_image").value;
+				console.log(document.getElementById("user_select_rect").src);
+			}
+		</script>
+	</head>
+	<body>
+		<input id="map_x_count" type="input" placeholder="x方格数量" style="" value="10"></input><br  />
+		<input id="map_y_count" type="input" placeholder="y方格数量" style="" value="10"></input><br  />
+		<input type="button" value="应用到地图" onclick="init_map()"></input><br  />
+		
+		<img id="user_select_rect" style="border:1px solid #f00"><br />
+		<input id="map_current_image" type="input" placeholder="destion path"></input><br  />
+		<input type="button" value="应用" onclick="set_use_map_image()"></input>
+		
+		
+		<table style="padding:1px;border:1px solid #568945;">
+			<tr>
+				<td>fff</td>
+				<td>ssss</td>
+			</tr>
+			<tr>
+				<td>sss</td>
+				<td>aaas</td>
+			</tr>
+		</table>
+	</body>
+</html>
